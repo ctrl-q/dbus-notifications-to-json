@@ -38,9 +38,9 @@ def write_to_file(message: MethodCallMessage):
     )
     outdir = Path(OUTDIR) / slugify(dict_["app_name"]) / slugify(dict_["summary"])
     outdir.mkdir(parents=True, exist_ok=True)
-    outfile = outdir / f"{time.strftime('%Y%m%d-%H%M%S')}-{slugify(dict_['summary'])}.json"
-    with outfile.open("w") as f:
-        json.dump(dict_, f)
+    outfile = outdir / f"{time.strftime('%Y%m%d-%H%M%S')}.jsonl"
+    with outfile.open("a") as f:
+        f.write(json.dumps(dict_) + "\n")
 
     print(f"Notification written to {outfile}", file=sys.stderr)
 
