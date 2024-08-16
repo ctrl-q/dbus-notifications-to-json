@@ -36,7 +36,7 @@ def write_to_file(message: MethodCallMessage):
             message.get_args_list(),
         )
     )
-    outdir = Path(OUTDIR) / slugify(dict_["app_name"])
+    outdir = Path(OUTDIR) / slugify(dict_["app_name"]) / slugify(dict_["summary"])
     outdir.mkdir(parents=True, exist_ok=True)
     outfile = outdir / f"{time.strftime('%Y%m%d-%H%M%S')}-{slugify(dict_['summary'])}.json"
     with outfile.open("w") as f:
