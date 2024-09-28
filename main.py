@@ -1,3 +1,10 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "dbus-python==1.3.2",
+#     "pygobject==3.48.2",
+# ]
+# ///
 import json
 import os
 import re
