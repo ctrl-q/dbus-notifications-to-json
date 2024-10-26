@@ -14,13 +14,45 @@ from gi.repository import GLib
 OUTDIR = os.environ["DBUS_TO_JSON_OUTDIR"]
 
 
-def write_to_file(message: MethodCallMessage):
+def get_outdir(notification: dict[str, str]) -> Path:
     def slugify(s: str):
         """Adapted from https://docs.djangoproject.com/en/4.1/ref/utils/#django.utils.text.slugify"""
         s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
         s = re.sub(r"[^\w\s-]", "", s.lower())
         return re.sub(r"[-\s]+", "-", s).strip("-_")
 
+    default_outdir = (
+        Path(OUTDIR)
+        / slugify(notification["app_name"])
+        / slugify(notification["summary"])
+    )
+    try:
+        for folder in reversed(
+            [default_outdir, *default_outdir.relative_to(OUTDIR).parents]
+        ):
+            folder = OUTDIR / folder
+            if (settings_file := OUTDIR / folder / ".settings.json").exists() and (
+                subdir_callback := json.loads(settings_file.read_text()).get(
+                    "subdir_callback"
+                )
+            ):
+                subdir = eval(subdir_callback)(notification.copy())
+                if subdir:
+                    if (
+                        folder.resolve()
+                        in (outdir := (folder / slugify(str(subdir))).resolve()).parents
+                    ):
+                        return outdir
+                    else:
+                        print(f"Error: Subdir must be below {folder}, got {outdir}")
+                        return default_outdir
+    except Exception as e:
+        print("Error:", e, file=sys.stderr)
+
+    return default_outdir
+
+
+def write_to_file(message: MethodCallMessage):
     dict_ = dict(
         zip(
             [
@@ -36,12 +68,11 @@ def write_to_file(message: MethodCallMessage):
             message.get_args_list(),
         )
     )
-    outdir = Path(OUTDIR) / slugify(dict_["app_name"]) / slugify(dict_["summary"])
+    outdir = get_outdir(dict_)
     outdir.mkdir(parents=True, exist_ok=True)
     outfile = outdir / f"{time.strftime('%Y%m%d-%H%M%S')}.jsonl"
     with outfile.open("a") as f:
         f.write(json.dumps(dict_) + "\n")
-
     print(f"Notification written to {outfile}", file=sys.stderr)
 
 
