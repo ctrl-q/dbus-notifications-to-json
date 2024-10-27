@@ -5,13 +5,37 @@ import sys
 import time
 import unicodedata
 from pathlib import Path
+from typing import Any
 
 import dbus
 import dbus.mainloop.glib
-from dbus.lowlevel import MethodCallMessage
+from dbus.lowlevel import MethodCallMessage, MethodReturnMessage
 from gi.repository import GLib
 
 OUTDIR = os.environ["DBUS_TO_JSON_OUTDIR"]
+
+# keys are sender, destination, serial
+MESSAGE_CACHE: dict[tuple[int, int, int], dict[str, Any]] = {}
+
+
+def cache(message: MethodCallMessage):
+    MESSAGE_CACHE[
+        (message.get_sender(), message.get_destination(), message.get_serial())
+    ] = dict(
+        zip(
+            [
+                "app_name",
+                "replaces_id",
+                "app_icon",
+                "summary",
+                "body",
+                "actions",
+                "hints",
+                "expire_timeout",
+            ],
+            message.get_args_list(),
+        )
+    )
 
 
 def get_outdir(notification: dict[str, str]) -> Path:
@@ -52,28 +76,19 @@ def get_outdir(notification: dict[str, str]) -> Path:
     return default_outdir
 
 
-def write_to_file(message: MethodCallMessage):
-    dict_ = dict(
-        zip(
-            [
-                "app_name",
-                "replaces_id",
-                "app_icon",
-                "summary",
-                "body",
-                "actions",
-                "hints",
-                "expire_timeout",
-            ],
-            message.get_args_list(),
-        )
-    )
-    outdir = get_outdir(dict_)
-    outdir.mkdir(parents=True, exist_ok=True)
-    outfile = outdir / f"{time.strftime('%Y%m%d-%H%M%S')}.jsonl"
-    with outfile.open("a") as f:
-        f.write(json.dumps(dict_) + "\n")
-    print(f"Notification written to {outfile}", file=sys.stderr)
+def write_to_file(message: MethodReturnMessage):
+    if dict_ := MESSAGE_CACHE.pop(
+        (message.get_destination(), message.get_sender(), message.get_reply_serial()),
+        {},
+    ):
+        (notification_id,) = message.get_args_list()
+        outdir = get_outdir(dict_)
+        outdir.mkdir(parents=True, exist_ok=True)
+        # Now that the notification ID is in the filename, we don't need a JSONL file, but keeping for compatibility
+        outfile = outdir / f"{time.strftime('%Y%m%d-%H%M%S')}-{notification_id}.jsonl"
+        with outfile.open("a") as f:
+            f.write(json.dumps(dict_  | {"id": notification_id}) + "\n")
+        print(f"Notification written to {outfile}", file=sys.stderr)
 
 
 def main():
@@ -85,13 +100,20 @@ def main():
         "org.freedesktop.DBus.Monitoring",
     ).BecomeMonitor(
         [
-            "type='method_call',interface='org.freedesktop.Notifications',member='Notify'"
+            "type='method_call',interface='org.freedesktop.Notifications',member='Notify'",
+            "type='method_return'",
         ],
         0,
     )
     bus.add_message_filter(
         lambda _, message: (
-            write_to_file(message) if isinstance(message, MethodCallMessage) else None
+            cache(message)
+            if isinstance(message, MethodCallMessage)
+            else (
+                write_to_file(message)
+                if isinstance(message, MethodReturnMessage)
+                else None
+            )
         )
     )
 
