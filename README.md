@@ -3,7 +3,7 @@
 Monitors [FreeDesktop Notifications Spec notifications](https://specifications.freedesktop.org/notification-spec/latest/protocol.html#command-notify) and:
 1. Writes them to `slugify(<app_name>)/slugify(<summary>)/strftime('%Y%m%d-%H%M%S')-<id>.json`
     1. The subdirectory can be overridden (see #Configuration)
-1. Emits a `com.example.DbusNotificationsToJson.NotificationSent` signal with the notification's arguments wrapped in a JSON dictionary
+1. Emits a `com.example.DbusNotificationsToJson.NotificationSent` signal with the notification's arguments wrapped in a JSON dictionary (can be used by [notification-tray](https://github.com/ctrl-q/notification-tray)
 
 ### Configuration
 
