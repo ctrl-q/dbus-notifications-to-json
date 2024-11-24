@@ -85,8 +85,7 @@ def write_to_file(message: MethodReturnMessage):
         (notification_id,) = message.get_args_list()
         outdir = get_outdir(dict_)
         outdir.mkdir(parents=True, exist_ok=True)
-        # Now that the notification ID is in the filename, we don't need a JSONL file, but keeping for compatibility
-        outfile = outdir / f"{time.strftime('%Y%m%d-%H%M%S')}-{notification_id}.jsonl"
+        outfile = outdir / f"{time.strftime('%Y%m%d-%H%M%S')}-{notification_id}.json"
         payload = json.dumps(dict_ | {"id": notification_id, "path": str(outfile)})
         # I can't for the life of me figure out how to send a signal
         # using https://dbus.freedesktop.org/doc/dbus-python/tutorial.html#emitting-signals-with-dbus-service-signal
@@ -101,8 +100,8 @@ def write_to_file(message: MethodReturnMessage):
                 payload,
             ]
         )
-        with outfile.open("a") as f:
-            f.write(payload + "\n")
+        with outfile.open("w") as f:
+            f.write(payload)
         print(f"Notification written to {outfile}", file=sys.stderr)
 
 
