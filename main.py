@@ -86,7 +86,9 @@ def write_to_file(message: MethodReturnMessage):
         outdir = get_outdir(dict_)
         outdir.mkdir(parents=True, exist_ok=True)
         outfile = outdir / f"{time.strftime('%Y%m%d-%H%M%S')}-{notification_id}.json"
-        payload = json.dumps(dict_ | {"id": notification_id, "path": str(outfile)})
+        payload = json.dumps(
+            dict_ | {"id": notification_id, "path": str(outfile)}, ensure_ascii=False
+        )
         # I can't for the life of me figure out how to send a signal
         # using https://dbus.freedesktop.org/doc/dbus-python/tutorial.html#emitting-signals-with-dbus-service-signal
         # the program crashes as soon as it tries to emit the signal
