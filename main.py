@@ -92,16 +92,19 @@ def write_to_file(message: MethodReturnMessage):
         # I can't for the life of me figure out how to send a signal
         # using https://dbus.freedesktop.org/doc/dbus-python/tutorial.html#emitting-signals-with-dbus-service-signal
         # the program crashes as soon as it tries to emit the signal
-        subprocess.run(
-            [
-                "gdbus",
-                "emit",
-                "--session",
-                "--signal=com.example.DbusNotificationsToJson.NotificationSent",
-                "--object-path=/com/example/DbusNotificationsToJson/notifications",
-                payload,
-            ]
-        )
+        try:
+            subprocess.run(
+                [
+                    "gdbus",
+                    "emit",
+                    "--session",
+                    "--signal=com.example.DbusNotificationsToJson.NotificationSent",
+                    "--object-path=/com/example/DbusNotificationsToJson/notifications",
+                    payload,
+                ]
+            )
+        except Exception as e:
+            print("Error:", e, file=sys.stderr)
         with outfile.open("w") as f:
             f.write(payload)
         print(f"Notification written to {outfile}", file=sys.stderr)
